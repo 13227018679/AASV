@@ -51,6 +51,7 @@ def plot_img(x):
     t[:,:,1] = x[0][:,:,1]
     t[:,:,2] = x[0][:,:,0]
     new_img = np.clip((t+[123.68, 116.779, 103.939]), 0, 255)/255
+    cv2.imwrite("tmp.jpg", new_img.transpose(1,0,2))   
     plt.imshow(new_img.transpose(1,0,2))
     plt.grid('off')
     plt.axis('off')
@@ -82,41 +83,42 @@ def dect(image):
             return image, b_img
 
 def fgsm(model,sess,sample):
-    saver = tf.train.Saver()
-    if os.path.exists('./checkpoint_dir/MyModel-1000.meta') == True:
-        new_saver = tf.train.import_meta_graph('./checkpoint_dir/MyModel-1000.meta')
-        new_saver.restore(sess, tf.train.latest_checkpoint('./checkpoint_dir'))
-
-    x = cv2.resize(sample,(164,48))
-    #cv2.imshow("img", x)
-    #cv2.waitKey(0)
+    x = cv2.resize(sample,(164,48))  # 固定大小164.48
     x = np.array([x.transpose(1, 0, 2)])
-    print(x.shape)
     x_adv = x
     x_noise = np.zeros_like(x)
-    for i in range(epochs): 
-        target = K.one_hot(target_class, 84)
-        loss = -1*K.categorical_crossentropy(target, model.output)
-        grads = K.gradients(loss, model.input)
-        delta = K.sign(grads[0])
-        x_noise = x_noise + delta
-        x_adv = x_adv + epsilon*delta
-        x_adv = sess.run(x_adv, feed_dict={model.input:x})
-        
-        y_pred = model.predict(x_adv)
-        y_pred = y_pred[:,2:,:]
-        result, confidence = fastdecode(y_pred)
-        #prev_probs.append(preds[0][target_class])
 
-        print("第"+ str(i) + "轮：")
-        print(str(result) + '  ' + str(confidence))
-        noise = x_adv-x
-        pass
+    saver = tf.train.Saver()
+    if os.path.exists('noise.npy') == True:
+        # new_saver = tf.train.import_meta_graph('./checkpoint_dir/MyModel.meta') #加载图模型
+        # new_saver.restore(sess, tf.train.latest_checkpoint('./checkpoint_dir')) #加载参数
+        noise = np.load("noise.npy")
+        x_adv = x_adv + noise
         
+    else:
+        for i in range(epochs): 
+            target = K.one_hot(target_class, 84)
+            loss = -1*K.categorical_crossentropy(target, model.output)
+            grads = K.gradients(loss, model.input)
+            delta = K.sign(grads[0])
+            x_noise = x_noise + delta
+            x_adv = x_adv + epsilon*delta
+            x_adv = sess.run(x_adv, feed_dict={model.input:x})
+            
+            y_pred = model.predict(x_adv)
+            y_pred = y_pred[:,2:,:]
+            result, confidence = fastdecode(y_pred)
+            #prev_probs.append(preds[0][target_class])
+
+            print("Epoch "+ str(i+1) + "：", end='')
+            print(str(result) + '  ' + str(confidence))
+            noise = x_adv-x
+            pass
+        saver.save(sess, './checkpoint_dir/MyModel')
+
     plot_img(x_adv)
     plot_img(noise)
-    saver.save(sess, './checkpoint_dir/MyModel')
-
+    np.save("noise.npy",noise)
 
 model = pr.LPR("model/cascade.xml","model/model12.h5","model/ocr_plate_all_gru.h5")
 model.modelSeqRec.summary()
