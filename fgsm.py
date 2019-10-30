@@ -18,14 +18,16 @@ from PIL import Image
 from PIL import ImageDraw
 fontC = ImageFont.truetype("./Font/platech.ttf", 14, 0)
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"]='3' 
+
 chars = [u"京", u"沪", u"津", u"渝", u"冀", u"晋", u"蒙", u"辽", u"吉", u"黑", u"苏", u"浙", u"皖", u"闽", u"赣", u"鲁", u"豫", u"鄂", u"湘", u"粤", u"桂",
              u"琼", u"川", u"贵", u"云", u"藏", u"陕", u"甘", u"青", u"宁", u"新", u"0", u"1", u"2", u"3", u"4", u"5", u"6", u"7", u"8", u"9", u"A",
              u"B", u"C", u"D", u"E", u"F", u"G", u"H", u"J", u"K", u"L", u"M", u"N", u"P", u"Q", u"R", u"S", u"T", u"U", u"V", u"W", u"X",
              u"Y", u"Z",u"港",u"学",u"使",u"警",u"澳",u"挂",u"军",u"北",u"南",u"广",u"沈",u"兰",u"成",u"济",u"海",u"民",u"航",u"空"
              ]
 
-epochs = 12
-epsilon = 0.5
+epochs = 50
+epsilon = 0.8
 target_class = 2 # cucumber
 prev_probs = []
 sess = K.get_session()
@@ -42,7 +44,7 @@ def fastdecode(y_pred):
     confidence/= len(results)
     return results,confidence
 
-def plot_img(x):
+def plot_img(x,name):
     """
     x is a BGR image with shape (? ,224, 224, 3) 
     """
@@ -51,11 +53,11 @@ def plot_img(x):
     t[:,:,1] = x[0][:,:,1]
     t[:,:,2] = x[0][:,:,0]
     new_img = np.clip((t+[123.68, 116.779, 103.939]), 0, 255)/255
-    cv2.imwrite("tmp.jpg", new_img.transpose(1,0,2))   
     plt.imshow(new_img.transpose(1,0,2))
     plt.grid('off')
     plt.axis('off')
-    plt.show()
+    plt.savefig(name)
+
 
 def drawRectBox(image,rect,addText):
     cv2.rectangle(image, (int(rect[0]), int(rect[1])), (int(rect[0] + rect[2]), int(rect[1] + rect[3])), (0,0, 255), 2,cv2.LINE_AA)
@@ -74,10 +76,8 @@ def dect(image):
     for pstr,confidence,rect in res_set:
         if confidence>0.7:
             image = drawRectBox(image, rect, pstr+" "+str(round(confidence,3)))
-            print ("Result: ",end='')
-            print (pstr)
-            print ("Confidence",end='')
-            print (confidence)
+            print ('原始结果：')
+            print(str(pstr) + '  ' + str(confidence))
             #cv2.imshow("image",image)
             #cv2.waitKey(0)
             return image, b_img
@@ -114,19 +114,26 @@ def fgsm(model,sess,sample):
             print(str(result) + '  ' + str(confidence))
             noise = x_adv-x
             pass
-        saver.save(sess, './checkpoint_dir/MyModel')
+        # saver.save(sess, './checkpoint_dir/MyModel')
 
-    plot_img(x_adv)
-    plot_img(noise)
+    plot_img(x_adv,'adv_img.jpg')
+    plot_img(noise,'noise_img.jpg')
+    print('\n对抗结果：')
+    y_pred = model.predict(x_adv)
+    y_pred = y_pred[:,2:,:]
+    result, confidence = fastdecode(y_pred)
+    print(str(result) + '  ' + str(confidence))
     np.save("noise.npy",noise)
+    return x_adv
 
+
+img = cv2.imread("images_rec/4.jpg")
 model = pr.LPR("model/cascade.xml","model/model12.h5","model/ocr_plate_all_gru.h5")
-model.modelSeqRec.summary()
-img = cv2.imread("images_rec/2.jpg")
+cls_model = model.modelSeqRec
+#model.modelSeqRec.summary()
+
 rect_img, bound_img= dect(img)
 
 
-
-cls_model = model.modelSeqRec
-
-fgsm(sess=sess, model=cls_model,sample=bound_img)
+adv_img = fgsm(sess=sess, model=cls_model,sample=bound_img)
+print('[-] ALL DONE.')

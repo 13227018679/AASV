@@ -16,11 +16,11 @@
 	 - [x] 车牌识别 + 攻击
 	 - [ ] LOGO识别 + 攻击
 	 - [ ] 检测攻击
-	 - [ ] 监控场景
+	 - [x] 监控场景
 	 - [x] FGSM
 	 - [ ] DeepFool
-	 - [ ] JSMA
-	 - [ ] black-box
+
+	   
 - 目录简介
 	``fgsm.py`` 是车牌攻击的实现
 	``HyperLPR.py``是车牌LPR API
