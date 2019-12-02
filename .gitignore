@@ -1,3 +1,5 @@
 /checkpoint_dir/*
 /.vscode/*
 /__pycache__/*
+/test/*
+/.git/*
