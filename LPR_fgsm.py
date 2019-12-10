@@ -26,7 +26,7 @@ chars = [u"京", u"沪", u"津", u"渝", u"冀", u"晋", u"蒙", u"辽", u"吉",
              u"Y", u"Z",u"港",u"学",u"使",u"警",u"澳",u"挂",u"军",u"北",u"南",u"广",u"沈",u"兰",u"成",u"济",u"海",u"民",u"航",u"空"
              ]
 results = dict()
-epochs = 20
+epochs = 15
 epsilon = 0.8
 target_class = 2 # cucumber
 prev_probs = []
@@ -55,7 +55,6 @@ def np2img(x):
     return new_img
 
 def plot_img(x,name):
-    print(x.transpose(1,0,2).shape)
     plt.imshow(x.transpose(1,0,2))
     plt.grid('off')
     plt.axis('off')
@@ -77,7 +76,6 @@ def dect(image):
     for pstr,confidence,rect in res_set:
         if confidence>0.7:
             image, start, end = drawRectBox(image, rect, pstr+" "+str(round(confidence,3)))
-            print ('原始结果：')
             print(str(pstr) + '  ' + str(confidence))
             results['class'] = str(pstr)
             results['confidence'] = str(confidence)[:5]            
@@ -128,25 +126,24 @@ def fgsm(model,sess,sample):
     np.save("adv.npy",x_adv)
     return [str(result),str(confidence)[:5]]
 
-def perdict(imgName):
-    print('[-] PERDICT START.')
+def predict(imgName):
+    print('[-] PREDICT START.')
     img = cv2.imread(imgName)
-    print(img.shape)
     rect_img, bound_img = dect(img)
     x = cv2.resize(bound_img,(164,48))  # 固定大小164.48
     x = np.array([x.transpose(1, 0, 2)])
     x = np2img(x)
     plot_img(x,'./images_out/b_img.jpg')
-    print('[-] PERDICT FINISH.')
+    print('[-] PREDICT FINISH.')
     return results
 
     
 def attack(imgName):
-    print('[-] ATTACK START.')
+    print('[x] ATTACK START.')
     img = cv2.imread(imgName)
     rect_img, bound_img = dect(img)
     result,confidence = fgsm(sess=sess, model=cls_model,sample=bound_img)
-    print('[-] ATTACK FINISH.')
+    print('[x] ATTACK FINISH.')
     return [result,confidence]
 
 if __name__ =='__main__':
@@ -155,4 +152,4 @@ if __name__ =='__main__':
 
     rect_img, bound_img = dect(img)
     result,confidence = fgsm(sess=sess, model=cls_model,sample=bound_img)
-    print('[-] ALL DONE.')
+    print('[o] ALL DONE.')
